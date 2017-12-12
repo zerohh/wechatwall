@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>微信上墙</title>
+    <script src="/socket.io/socket.io.js" type="text/javascript"></script>
+    <script src="http://code.jquery.com/jquery-latest.js"></script>
+    <style type="text/css">
+        body{
+            background-image: url("./imgs/bg.jpg");
+            width:1920px;
+            height: 1080px;
+            margin:0;
+            padding:0;
+        }
+        .man,.nickname-content{
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+        }
+        .container{
+            width:1040px;
+            height:820px;
+            justify-content: flex-start;
+            overflow: hidden;
+        }
+        .man{
+            width:100%;
+            height: 100%;
+            min-width: 920px;
+            min-height: 560px;
+            justify-content: flex-start;
+        }
+        img{
+            width:166px;
+            height: 166px;
+            border-radius: 83px;
+        }
+        .eachItem{
+            display: flex;
+            flex-direction: row;
+            justify-content: flex-start;
+            align-items: center;
+            width:990px;
+            height: 190px;
+            margin-bottom: 15px;
+            background: rgba(255,255,255,0.04);
+            border-radius: 10px;
+            padding:0 20px;
+        }
+        .nickname-content{
+            width:850px;
+            height: 166px;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-start;
+            align-items: flex-start;
+            margin-left: 40px;
+        }
+        .nickname-content label{
+            font-size: 30px;
+            display: inline-block;
+            height: 38px;
+            line-height: 38px;
+            overflow: hidden;
+        }
+        .nickname-content span{
+            display: block;
+            word-break: break-all;
+            word-wrap: break-word;
+            height: 112px;
+            overflow: hidden;
+            width:100%;
+        }
+    </style>
+</head>
+<body>
+    <div class="man">
+        <div class="container">
+            <div class="qrcode">
+                <p>请关注微信公众号，并在公众号中发送信息即可上墙</p>
+                <img style="border-radius: 0" src="./imgs/qrcode.jpg" alt="">
+            </div>
+        </div>
+        <button onclick="zanting()">点我暂停</button>
+    </div>
+</body>
+<script>
+    var messageReaded = [];
+    var messageNew = [];
+    var intervalId;
+    var messageReadedId = 0;//用于记录已读列表中的已显示的下表
+    var showMessageCount = 0;//用于记录已显示的消息条数，在页面加载的时候最多显示四条
+    var socket = io.connect("http://47.94.5.37:80");
+    socket.on('sendMsg', function (data) {
+        if(data){
+            messageNew.push(data);
+        }
+    });
+    window.onload = function () {
+        //页面一加载的时候请求接口获取之前用户发送的消息，用于默认显示。此处在后台添加接口后要完善。
+
+        //先显示未读消息
+        if(messageNew.length>4){
+            for(let s = 0 ; s < 4 ; s++){
+                showMessage(messageNew[s]);
+            }
+            if(messageNew[4]){
+                showMessage(messageNew[4]);
+                messageReaded = messageReaded.concat(messageNew.splice(0,5));
+            }else{
+                showMessage(messageReaded[0]);
+                messageReadedId =1;
+            }
+        }else if(messageNew.length>0){
+            let newsLength = messageNew.length;
+            for(let s = 0 ; s < newsLength ; s++){
+                showMessage(messageNew[s]);
+            }
+            messageReaded = messageReaded.concat(messageNew.splice(0,messageNew.length));
+            for(let d = 0 ; d < (5-newsLength) ; d++){
+                messageReadedId = d+1;
+                showMessage(messageReaded[d]);
+            }
+        }else{
+            $(".qrcode").show();
+        }
+    };
+    function messageControl() {
+        if(messageNew.length>0){
+            showMessage(messageNew[0]);
+            messageReaded.push(messageNew[0]);
+            messageNew.shift();
+            return;
+        }else if(messageReaded.length >0 && showMessageCount>4){
+            if(messageReadedId == messageReaded.length){
+                messageReadedId = 0;
+            }
+            showMessage(messageReaded[messageReadedId]);
+            messageReadedId+=1;
+        }
+    }
+    function showMessage(obj) {
+            $(".qrcode").hide();
+            let tempOne = '';
+            tempOne +='<div class="eachItem">'+
+                    '<div class="headImg">'+
+                    '<img class="imgStyle" src="'+obj.headImgUrl+'" alt="">'+
+                    '</div>'+
+                    '<div class="nickname-content">'+
+                    '<label>'+obj.nickname+':</label>'+
+                    '<span style="font-size: 60px;">'+obj.content+'</span>'+
+                    '</div>'+
+                    '</div>';
+            $(".container").append(tempOne);
+        showMessageCount+=1;
+    };
+    function gun() {
+        intervalId = setInterval(function () {
+            if(showMessageCount > 4){
+                $(".eachItem:first").animate({"margin-top":'-205px'},600,function () {
+                    $(".eachItem:first").remove();
+                });
+            }
+            if(messageNew.length>0||messageReaded.length>0){
+                messageControl();
+            }
+        },2000)
+    }
+    gun();
+    function zanting() {
+        clearInterval(intervalId);
+    }
+</script>
+</html>
